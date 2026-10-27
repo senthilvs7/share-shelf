@@ -2,9 +2,9 @@
 """share-shelf: add, retire, and list shared HTML artifacts.
 
 Commands:
-  add FILE [--name SLUG]   copy an HTML file into site/<random>/ and print its link
-  retire QUERY [--no-push] move one artifact to retired/, commit, and push
-  index                    write a private index to .local/index.html
+  add FILE [--name SLUG]   copy an HTML file into site/<random>/, print its link, update the index
+  retire QUERY [--no-push] move one artifact to retired/, commit, push, and update the index
+  index                    rebuild the private index at .local/index.html
   build --out DIR          copy site/ to DIR and add the index at $INDEX_PATH (used by the workflow)
   token                    print a random value for the INDEX_PATH secret
 """
@@ -127,6 +127,7 @@ def cmd_add(args):
     rel = dest.relative_to(SITE).as_posix()
     print(f"Added site/{rel}")
     print(f"Link after deploy: {base_url()}{rel}")
+    write_local_index()
     print("Next: commit and push so the workflow deploys it.")
 
 
@@ -157,6 +158,7 @@ def cmd_retire(args):
         src.parent.rmdir()
     except OSError:
         pass
+    write_local_index()
     # Commit only these paths, so other pending or staged work stays out.
     git("commit", "-m", f"[retire] {rel.as_posix()}", "--", *paths)
     print(f"Moved to retired/{rel.as_posix()} and committed.")
@@ -167,12 +169,17 @@ def cmd_retire(args):
         print("Pushed. The link returns 404 after the deploy and cache delay (about 10 minutes).")
 
 
-def cmd_index(_args):
+def write_local_index():
+    """Rebuild the local index from site/, so it never goes stale."""
     rows = artifacts()
     LOCAL.mkdir(exist_ok=True)
     out = LOCAL / "index.html"
     out.write_text(render_index(rows, "../site/"), encoding="utf-8")
-    print(f"Wrote {out.relative_to(ROOT)} ({len(rows)} artifacts). Open it in a browser.")
+    print(f"Index updated: {out.relative_to(ROOT)} ({len(rows)} artifacts).")
+
+
+def cmd_index(_args):
+    write_local_index()
 
 
 def check_build_dir(out):
