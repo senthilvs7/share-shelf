@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta name="robots" content="noindex">
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f4f6f9;
+    color: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 0;
+    padding: 24px;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #dde3ec;
+    border-radius: 14px;
+    padding: 32px 36px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    letter-spacing: 0.01em;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 0.78rem; font-weight: 600; color: #5a6480; letter-spacing: 0.06em; text-transform: uppercase; }
+  select, input[type="text"] {
+    font-size: 0.95rem;
+    font-family: inherit;
+    border: 1px solid #dde3ec;
+    border-radius: 8px;
+    padding: 9px 12px;
+    background: #f9fafb;
+    color: #1a1a2e;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  select:focus, input[type="text"]:focus { border-color: #4f7ef8; background: #fff; }
+
+  .format-row { display: flex; gap: 10px; align-items: flex-end; }
+  .format-row .field { flex: 1; }
+  .format-row select { width: 100%; }
+
+  #custom-format-field { display: none; }
+
+  button {
+    background: #4f7ef8;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: background 0.15s, transform 0.1s;
+    width: 100%;
+  }
+  button:hover { background: #3a68e0; }
+  button:active { transform: scale(0.98); }
+
+  #output-box {
+    background: #f0f4ff;
+    border: 1px solid #c5d3f8;
+    border-radius: 10px;
+    padding: 18px 20px;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    font-size: 1.6rem;
+    color: #2a4db5;
+    letter-spacing: 0.06em;
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    word-break: break-all;
+  }
+  #output-box.empty { color: #a0aac8; font-size: 1rem; font-family: inherit; letter-spacing: 0; }
+
+  .divider { border: none; border-top: 1px solid #edf0f5; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>⏱ Timestamp Generator</h2>
+  <hr class="divider">
+
+  <!-- Timezone -->
+  <div class="field">
+    <label>Timezone</label>
+    <select id="tz">
+      <option value="America/Chicago" selected>Central Time (CT)</option>
+      <option value="America/New_York">Eastern Time (ET)</option>
+      <option value="America/Denver">Mountain Time (MT)</option>
+      <option value="America/Los_Angeles">Pacific Time (PT)</option>
+      <option value="America/Anchorage">Alaska Time (AKT)</option>
+      <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
+      <option value="UTC">UTC</option>
+      <option value="Europe/London">London (GMT/BST)</option>
+      <option value="Europe/Paris">Paris (CET/CEST)</option>
+      <option value="Asia/Kolkata">India (IST)</option>
+      <option value="Asia/Tokyo">Tokyo (JST)</option>
+      <option value="Asia/Shanghai">China (CST)</option>
+      <option value="Australia/Sydney">Sydney (AEST)</option>
+    </select>
+  </div>
+
+  <!-- Format -->
+  <div class="field">
+    <label>Format</label>
+    <select id="fmt-preset" onchange="onFormatChange()">
+      <option value="%y%m-%d-%H-%M%S" selected>%y%m-%d-%H-%M%S &nbsp;(e.g. 2604-30-14-5351)</option>
+      <option value="%y%m%d">%y%m%d &nbsp;(e.g. 260430)</option>
+      <option value="%Y-%m-%d">%Y-%m-%d &nbsp;(e.g. 2026-04-30)</option>
+      <option value="%Y-%m-%d %H:%M:%S">%Y-%m-%d %H:%M:%S &nbsp;(e.g. 2026-04-30 14:53:51)</option>
+      <option value="%m/%d/%Y">%m/%d/%Y &nbsp;(e.g. 04/30/2026)</option>
+      <option value="%H:%M:%S">%H:%M:%S &nbsp;(e.g. 14:53:51)</option>
+      <option value="%Y%m%d%H%M%S">%Y%m%d%H%M%S &nbsp;(compact)</option>
+      <option value="custom">Custom…</option>
+    </select>
+  </div>
+
+  <div class="field" id="custom-format-field">
+    <label>Custom Format String</label>
+    <input type="text" id="custom-fmt" placeholder="e.g. %Y_%m_%d-%H%M" />
+  </div>
+
+  <!-- Suffix -->
+  <div class="field">
+    <label>Append to End (optional)</label>
+    <input type="text" id="suffix" placeholder="e.g. _v1  or  -PROD" />
+  </div>
+
+  <hr class="divider">
+  <button onclick="generate()">Generate</button>
+  <div id="output-box" class="empty">Click Generate to produce a timestamp</div>
+</div>
+
+<script>
+function onFormatChange() {
+  const v = document.getElementById('fmt-preset').value;
+  document.getElementById('custom-format-field').style.display = v === 'custom' ? 'flex' : 'none';
+}
+
+function getFormatStr() {
+  const v = document.getElementById('fmt-preset').value;
+  return v === 'custom' ? (document.getElementById('custom-fmt').value || '%Y-%m-%d %H:%M:%S') : v;
+}
+
+function getParts(tz) {
+  const now = new Date();
+  const fmt = (opts) => new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: false, ...opts })
+    .formatToParts(now).reduce((a, p) => ({ ...a, [p.type]: p.value }), {});
+
+  const d = fmt({ year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  let h = d.hour === '24' ? '00' : d.hour;
+  const y4 = d.year;
+  const y2 = y4.slice(-2);
+
+  return { y4, y2, mo: d.month, dd: d.day, hh: h, mm: d.minute, ss: d.second };
+}
+
+function applyFormat(fmt, p) {
+  return fmt
+    .replace(/%Y/g, p.y4)
+    .replace(/%y/g, p.y2)
+    .replace(/%m/g, p.mo)
+    .replace(/%d/g, p.dd)
+    .replace(/%H/g, p.hh)
+    .replace(/%M/g, p.mm)
+    .replace(/%S/g, p.ss);
+}
+
+function generate() {
+  const tz     = document.getElementById('tz').value;
+  const fmtStr = getFormatStr();
+  const suffix = document.getElementById('suffix').value.trim();
+  const parts  = getParts(tz);
+  const ts     = applyFormat(fmtStr, parts);
+  const result = ts + suffix;
+
+  const el = document.getElementById('output-box');
+  el.textContent = result;
+  el.classList.remove('empty');
+}
+</script>
+</body>
+</html>
